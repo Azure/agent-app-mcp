@@ -6,11 +6,13 @@ import logging
 import jwt
 from mcp.server.auth.provider import AccessToken
 
+from .config import Settings
+
 logger = logging.getLogger(__name__)
 
 
 class EntraVerifier:
-    def __init__(self, settings, jwks=None):
+    def __init__(self, settings: Settings, jwks=None):
         self.settings = settings
         self.jwks = jwks or jwt.PyJWKClient(
             f"https://login.microsoftonline.com/{settings.MCP_AUTH_TENANT_ID}/discovery/v2.0/keys",

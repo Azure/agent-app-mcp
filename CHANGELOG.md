@@ -1,5 +1,27 @@
 # Changelog
 
+## [v2.0.0] - 2026-11-02
+
+### Changed
+- **Explicit toolset activation.** Select packaged tools through `MCP_TOOLSETS`
+  in App Configuration, label `agent-lz`. The default `[]` starts an
+  authenticated server with an empty tool catalog.
+- **Independent toolset lifecycle.** Shared configuration, Entra authorization
+  and MCP transport are composed separately from toolset settings, registration
+  and provider clients. NL2SQL dependencies initialize when `["nl2sql"]` is
+  selected and are cleaned up on startup failure and shutdown.
+- **Explicit configuration validation.** Reject malformed, duplicate and
+  unsupported toolset selections before dependency initialization. Validate
+  each selected toolset's settings at its own boundary.
+
+### Migration
+- Set `MCP_TOOLSETS=["nl2sql"]` and restart or redeploy the server to retain
+  SQL tools in an existing deployment. Keep the approved source catalog,
+  permissions and model bindings. The SQL tool names, argument/result schemas
+  and administrative importer remain unchanged.
+- Adopt the coordinated platform configuration and exact component pins.
+  Rollback restores the previous complete combination and retains catalog data.
+
 ## [v1.0.0] - 2026-11-02
 
 ### Changed

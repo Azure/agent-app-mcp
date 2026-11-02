@@ -1,10 +1,11 @@
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 from azure.cosmos.exceptions import CosmosResourceNotFoundError
 from pydantic import ValidationError
 
-from conftest import Container
+from conftest import Container, as_configuration
+from shared.config import ConfigurationValue
 from tools.nl2sql.catalog import Catalog, float32_vector
 from tools.nl2sql.contracts import NL2SQLError
 from tools.nl2sql.importer import ImportFile, import_metadata
@@ -93,3 +94,39 @@ def test_import_requires_all_approved_schemas(import_json):
     import_json["records"] = import_json["records"][:1]
     with pytest.raises(ValidationError):
         ImportFile.model_validate(import_json)
+
+
+@pytest.mark.parametrize("fail", [False, True])
+async def test_admin_importer_uses_specific_settings_and_closes_clients(
+    fail, settings, import_json, tmp_path, monkeypatch
+):
+    import json
+    import tools.nl2sql.importer as importer
+
+    path = tmp_path / "approved.json"
+    path.write_text(json.dumps(import_json), encoding="utf-8")
+    configuration = as_configuration(settings.model_dump(mode="json"))
+    # Admin import is independent of server selection and inbound token authentication.
+    configuration["MCP_TOOLSETS"] = ConfigurationValue("not-json")
+    configuration["MCP_AUTH_AUDIENCE"] = ConfigurationValue("not-a-uuid")
+    credential, cosmos, models = AsyncMock(), AsyncMock(), AsyncMock()
+    credential.__aenter__.return_value = credential
+    cosmos.__aenter__.return_value = cosmos
+    cosmos.get_database_client = Mock()
+    monkeypatch.setattr(importer, "ManagedIdentityCredential", Mock(return_value=credential))
+    monkeypatch.setattr(importer, "CosmosClient", Mock(return_value=cosmos))
+    monkeypatch.setattr(importer, "Models", Mock(return_value=models))
+    monkeypatch.setattr(importer, "load_configuration", AsyncMock(return_value=configuration))
+    operation = AsyncMock(return_value="approved-version")
+    if fail:
+        operation.side_effect = ValueError("import failure")
+    monkeypatch.setattr(importer, "import_metadata", operation)
+    if fail:
+        with pytest.raises(ValueError, match="import failure"):
+            await importer.run(path)
+    else:
+        assert await importer.run(path) == "approved-version"
+    assert operation.call_args.args[-1] == settings.MCP_EMBEDDING_DIMENSIONS
+    models.close.assert_awaited_once()
+    cosmos.__aexit__.assert_awaited_once()
+    credential.__aexit__.assert_awaited_once()

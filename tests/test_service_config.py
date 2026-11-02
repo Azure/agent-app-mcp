@@ -4,7 +4,10 @@ from unittest.mock import AsyncMock
 import pytest
 from pydantic import ValidationError
 
-from tools.nl2sql.config import Settings, load_settings
+from conftest import as_configuration
+from shared.config import Settings as SharedSettings
+from shared.config import load_configuration, load_settings
+from tools.nl2sql.config import Settings, load_settings as load_sql_settings
 from tools.nl2sql.contracts import NL2SQLError
 from tools.nl2sql.service import Service
 
@@ -55,33 +58,43 @@ async def test_overall_timeout(settings, source):
     instance.sql.execute.assert_not_awaited()
 
 
-def test_empty_allowed_clients_valid_and_limits_fail_closed(settings):
-    assert Settings.model_validate(settings.model_dump() | {"MCP_ALLOWED_CLIENT_IDS": []})
+def test_sql_limits_fail_closed(settings):
     for field, value in (
         ("MCP_QUERY_TIMEOUT_SECONDS", 76),
         ("MCP_METADATA_TOP_K", 1000),
-        ("MCP_AUTH_RESOURCE_SCOPE", "api://other/.default"),
         ("MCP_COSMOS_ENDPOINT", "http://example.com"),
         ("MCP_SQL_SECRET_NAMES", ["secret/invalid"]),
-        ("MCP_SERVER_URL", "http://example.com/mcp"),
-        ("MCP_SERVER_URL", "https://example.com/other"),
-        ("MCP_SERVER_URL", "https://example.com/mcp?access=unexpected"),
     ):
         with pytest.raises(ValidationError):
             Settings.model_validate(settings.model_dump() | {field: value})
 
 
-def test_parent_published_mcp_endpoint(settings):
-    configured = Settings.model_validate(
-        settings.model_dump() | {"MCP_SERVER_URL": "https://synthetic-mcp.example.com/mcp"}
+def test_shared_auth_limits_fail_closed(shared_settings):
+    assert SharedSettings.model_validate(
+        shared_settings.model_dump() | {"MCP_ALLOWED_CLIENT_IDS": []}
+    )
+    for field, value in (
+        ("MCP_AUTH_RESOURCE_SCOPE", "api://other/.default"),
+        ("MCP_SERVER_URL", "http://example.com/mcp"),
+        ("MCP_SERVER_URL", "https://example.com/other"),
+        ("MCP_SERVER_URL", "https://example.com/mcp?access=unexpected"),
+    ):
+        with pytest.raises(ValidationError):
+            SharedSettings.model_validate(shared_settings.model_dump() | {field: value})
+
+
+def test_parent_published_mcp_endpoint(shared_settings):
+    configured = SharedSettings.model_validate(
+        shared_settings.model_dump() | {"MCP_SERVER_URL": "https://synthetic-mcp.example.com/mcp"}
     )
     assert configured.resource_url == "https://synthetic-mcp.example.com/mcp"
 
 
-async def test_app_configuration_label_and_json_arrays(settings, monkeypatch):
-    import json
+async def test_app_configuration_label_and_json_arrays(
+    settings, shared_settings, configuration, monkeypatch
+):
     from types import SimpleNamespace
-    import tools.nl2sql.config as module
+    import shared.config as module
 
     class Client:
         def __init__(self, endpoint, credential):
@@ -97,17 +110,18 @@ async def test_app_configuration_label_and_json_arrays(settings, monkeypatch):
             assert kwargs == {"label_filter": "agent-lz"}
 
             async def items():
-                for key, value in settings.model_dump(mode="json").items():
-                    if value is not None:
-                        yield SimpleNamespace(
-                            key=key,
-                            value=json.dumps(value) if isinstance(value, list) else str(value),
-                            content_type=None,
-                        )
+                for key, item in configuration.items():
+                    yield SimpleNamespace(key=key, value=item.value, content_type=item.content_type)
 
             return items()
 
     monkeypatch.setattr(module, "AzureAppConfigurationClient", Client)
     monkeypatch.setenv("APP_CONFIG_ENDPOINT", "https://example.azconfig.io")
-    loaded = await load_settings(object())
-    assert loaded == settings
+    loaded = await load_configuration(object())
+    assert load_settings(loaded) == shared_settings.model_copy(update={"MCP_TOOLSETS": ["nl2sql"]})
+    assert load_sql_settings(loaded) == settings
+
+
+def test_importer_settings_do_not_require_server_auth_or_selection(settings):
+    configuration = as_configuration(settings.model_dump(mode="json"))
+    assert load_sql_settings(configuration) == settings

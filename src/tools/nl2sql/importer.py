@@ -14,6 +14,8 @@ from azure.cosmos.exceptions import CosmosResourceNotFoundError
 from azure.identity.aio import ManagedIdentityCredential
 from pydantic import Field, model_validator
 
+from shared.config import load_configuration
+
 from .catalog import float32_vector
 from .config import load_settings
 from .contracts import Metadata, Source, StrictModel
@@ -90,7 +92,7 @@ async def run(path):
         credential = await stack.enter_async_context(
             ManagedIdentityCredential(client_id=os.getenv("AZURE_CLIENT_ID"))
         )
-        settings = await load_settings(credential)
+        settings = load_settings(await load_configuration(credential))
         if data.source.authentication == "sql_password" and (
             not settings.KEY_VAULT_ENDPOINT
             or data.source.password_secret_name not in settings.MCP_SQL_SECRET_NAMES

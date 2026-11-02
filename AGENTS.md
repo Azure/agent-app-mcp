@@ -91,7 +91,7 @@ put Copilot engineering agents or skills under `src/`.
 - Never expose secrets, tokens, credentials, personal data, private validation
   environment names, or sensitive provider responses in code, logs, prompts,
   tool results, examples, or releases.
-- Read runtime settings from Azure App Configuration with label `gpt-rag`
+- Read runtime settings from Azure App Configuration with label `agent-lz`
   through the shared configuration path when one exists. Resolve secrets
   through Key Vault references; never hardcode endpoints, deployment names,
   credentials, or feature flags.
@@ -117,9 +117,7 @@ tool, resource, prompt, or registration.
 - Discover the real commands and checks for the affected surface; do not
   invent a test suite.
 - Run the narrowest existing validation first and broaden according to risk.
-- There is currently no maintained `tests/` suite. Add focused tests when a
-  behavior can be protected economically; do not claim automated coverage
-  that does not exist.
+- Run the focused maintained `tests/` cases for changed behavior.
 - For Python changes, restore dependencies with `uv sync` and at minimum check
   import or startup behavior. Exercise protocol behavior with the MCP
   Inspector when a capability or contract changes.
@@ -153,14 +151,15 @@ directory only when an ADR is actually required.
 
 The detailed repository rules are in `.github/copilot-instructions.md`.
 
-- Feature work branches from `main` and targets `main`.
+- Feature work branches from `develop` on `feature/<description>` and targets
+  `develop`. Release branches start from `develop` and target `main`.
 - Component releases use `release/x.y.z`, semantic versioning, `vX.Y.Z` tags
   and release titles, synchronized `VERSION`, `pyproject.toml`, `uv.lock`, and
   `CHANGELOG.md`.
-- Service setup and troubleshooting belong in this repository's `README.md`
-  and `TROUBLESHOOTING.md`.
+- Service setup and troubleshooting belong in the central
+  `Azure/AI-Landing-Zones` documentation. Keep this repository's README short.
 - Changes that affect the umbrella GPT-RAG deployment or user experience also
-  require coordinated updates in the `docs` branch of `Azure/GPT-RAG`.
+  require coordinated updates on `main` in `Azure/AI-Landing-Zones`.
 - Security vulnerabilities follow `SECURITY.md` and must not be disclosed in
   public issues.
 

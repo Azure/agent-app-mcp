@@ -1,7 +1,8 @@
 # Agent application MCP
 
-NL2SQL MCP component for [Agent Landing Zone](https://github.com/Azure/agent-landing-zone),
-using the official Python MCP SDK, application-owned Cosmos DB metadata and Azure Container Apps.
+MCP tool server for [Agent Landing Zone](https://github.com/Azure/agent-landing-zone),
+using the official Python MCP SDK and Azure Container Apps.
+Its currently supplied NL2SQL tools use application-owned Cosmos DB metadata.
 
 For setup, SQL onboarding and operations, see the
 [Agent App MCP setup guide](https://azure.github.io/AI-Landing-Zones/agent-landing-zone/agent-app-mcp/).

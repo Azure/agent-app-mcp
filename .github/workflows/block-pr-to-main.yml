@@ -1,0 +1,22 @@
+name: Block PRs to main
+
+on:
+  pull_request:
+    types: [opened, reopened, edited, synchronize]
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  block-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate release source branch
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          if [[ ! "$HEAD_REF" =~ ^release/[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Only release/<MAJOR>.<MINOR>.<PATCH> branches may target main."
+            exit 1
+          fi

@@ -1,8 +1,15 @@
 # Changelog
 
-## [Unreleased]
+## [v1.0.0] - 2026-11-02
 
 ### Changed
+- Replace the demonstration with an NL2SQL-only official Python MCP SDK 2.3.0
+  server, stateless `/mcp`, Entra application authorization and typed,
+  bounded read-only SQL results.
+- Use `agent-lz` managed-identity App Configuration, application Cosmos vector
+  metadata and existing generation/embedding models. No extra Azure AI Search
+  or agent framework dependency.
+- Deploy only to existing Container Apps using immutable image digests.
 - Consolidate compatible Dependabot updates in the MCP 2.3.0 graph:
   `certifi` 2026.10.19, `PyJWT` 2.15.0, `urllib3` 2.8.0 and `anyio` 4.14.2.
   Preserve official PyPI artifacts and unrelated locked packages.
@@ -17,6 +24,9 @@
   without changing locked versions or dependency edges.
 
 ### Added
+- Administrative approved-schema/example importer with staged metadata versions
+  and conditional activation.
+- Focused protocol, authorization, SQL, metadata and deployment tests.
 - **Reusable release skill:** Added repository-local release guidance for authoritative version discovery, SemVer preparation, validation, sanitized release notes, publication approval gates, and safe reconciliation.
 
 ## [v0.3.8] - 2026-05-27
@@ -81,18 +91,3 @@ This format follows [Keep a Changelog](https://keepachangelog.com/) and adheres 
 - The first version of the GPT RAG MCP was created.
 - Added support for Stdio, FastAPI, and SSE.
 - Included initial set of tools.
-# Unreleased — 1.0.0 candidate
-
-### Changed
-- Replace the demo with NL2SQL-only official MCPServer 2.3.0, stateless `/mcp`,
-  Entra application authorization and typed bounded read-only SQL results.
-- Use `agent-lz` managed-identity App Configuration, Cosmos vector metadata and
-  existing platform generation/embedding models. No Search or agent framework.
-- Deploy only to existing Container Apps using immutable image digests.
-
-### Added
-- Administrative approved-schema/example importer with staged metadata versions
-  and conditional activation; partial staging never changes the active source.
-- Focused local security, protocol, provider and deployment tests.
-
-No tag or release is published for this candidate.

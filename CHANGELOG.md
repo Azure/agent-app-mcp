@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Changed
+- Consolidate compatible Dependabot updates in the MCP 2.3.0 graph:
+  `certifi` 2026.10.19, `PyJWT` 2.15.0, `urllib3` 2.8.0 and `anyio` 4.14.2.
+  Preserve official PyPI artifacts and unrelated locked packages.
+
 ### Fixed
 - Scope MCP deployment to `AZURE_APP_RESOURCE_GROUP` and bind ACR operations to
   `CONTAINER_REGISTRY_RESOURCE_ID`, independently of the Foundry resource group.

@@ -3,7 +3,7 @@ import pytest
 from starlette.testclient import TestClient
 from unittest.mock import AsyncMock
 
-from server import create_app
+from conftest import nl2sql_app
 from tools.nl2sql.contracts import QueryResult, SourcesResult
 
 
@@ -47,10 +47,10 @@ async def test_signature_algorithm_missing_claims_and_jwks_failure(signing):
     assert await signing.verifier.verify_token(signing.token()) is None
 
 
-async def test_empty_allowlist_starts_but_denies(settings, signing):
-    settings.MCP_ALLOWED_CLIENT_IDS = []
+async def test_empty_allowlist_starts_but_denies(shared_settings, signing):
+    shared_settings.MCP_ALLOWED_CLIENT_IDS = []
     assert await signing.verifier.verify_token(signing.token()) is None
-    with TestClient(create_app(AsyncMock(), settings, signing.verifier)) as client:
+    with TestClient(nl2sql_app(AsyncMock(), shared_settings, signing.verifier)) as client:
         assert client.get("/healthz").json() == {"status": "ok"}
         assert client.post("/mcp").status_code == 401
         assert (
@@ -59,7 +59,7 @@ async def test_empty_allowlist_starts_but_denies(settings, signing):
         )
 
 
-def test_real_sdk_http_discovery_and_structured_output(settings, signing):
+def test_real_sdk_http_discovery_and_structured_output(shared_settings, signing):
     service = AsyncMock()
     service.list_sources.return_value = SourcesResult(sources=[])
     service.query.return_value = QueryResult(
@@ -70,7 +70,7 @@ def test_real_sdk_http_discovery_and_structured_output(settings, signing):
         rows=[],
         row_count=0,
     )
-    with TestClient(create_app(service, settings, signing.verifier)) as client:
+    with TestClient(nl2sql_app(service, shared_settings, signing.verifier)) as client:
         assert client.get("/healthz").status_code == 200
         for path in ("/", "/sse", "/mcp/sse"):
             assert client.get(path).status_code == 404
@@ -91,7 +91,7 @@ def test_real_sdk_http_discovery_and_structured_output(settings, signing):
         )
         metadata = client.get("/.well-known/oauth-protected-resource/mcp").json()
         assert metadata["resource"] == "http://localhost:8080/mcp"
-        assert metadata["authorization_servers"] == [settings.issuer]
+        assert metadata["authorization_servers"] == [shared_settings.issuer]
         headers = {
             "Authorization": f"Bearer {signing.token()}",
             "Accept": "application/json, text/event-stream",
@@ -152,14 +152,14 @@ def test_real_sdk_http_discovery_and_structured_output(settings, signing):
         assert client.post("/mcp", headers=headers, content="x" * 16385).status_code == 413
 
 
-async def test_official_sdk_client_and_server_locally(settings, signing):
+async def test_official_sdk_client_and_server_locally(shared_settings, signing):
     import httpx2
     from mcp import ClientSession
     from mcp.client.streamable_http import streamable_http_client
 
     service = AsyncMock()
     service.list_sources.return_value = SourcesResult(sources=[])
-    app = create_app(service, settings, signing.verifier)
+    app = nl2sql_app(service, shared_settings, signing.verifier)
     async with app.router.lifespan_context(app):
         async with httpx2.AsyncClient(
             transport=httpx2.ASGITransport(app=app),
@@ -178,13 +178,13 @@ async def test_official_sdk_client_and_server_locally(settings, signing):
                     assert result.structured_content == {"schema_version": 1, "sources": []}
 
 
-def test_oauth_metadata_uses_parent_endpoint(settings, signing):
-    from tools.nl2sql.config import Settings
+def test_oauth_metadata_uses_parent_endpoint(shared_settings, signing):
+    from shared.config import Settings
 
     configured = Settings.model_validate(
-        settings.model_dump() | {"MCP_SERVER_URL": "https://synthetic-mcp.example.com/mcp"}
+        shared_settings.model_dump() | {"MCP_SERVER_URL": "https://synthetic-mcp.example.com/mcp"}
     )
-    with TestClient(create_app(AsyncMock(), configured, signing.verifier)) as client:
+    with TestClient(nl2sql_app(AsyncMock(), configured, signing.verifier)) as client:
         document = client.get("/.well-known/oauth-protected-resource/mcp").json()
         assert document["resource"] == "https://synthetic-mcp.example.com/mcp"
         assert (

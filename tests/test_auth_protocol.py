@@ -120,7 +120,7 @@ def test_real_sdk_http_discovery_and_structured_output(shared_settings, signing)
                 "clientInfo": {"name": "local-test", "version": "1"},
             },
         )
-        assert initialized["result"]["serverInfo"]["version"] == "1.0.0"
+        assert initialized["result"]["serverInfo"]["version"] == "2.0.0"
         tools = rpc("tools/list")["result"]["tools"]
         assert {t["name"] for t in tools} == {"nl2sql.list_sources", "nl2sql.query"}
         query = next(t for t in tools if t["name"] == "nl2sql.query")

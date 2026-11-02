@@ -1,6 +1,6 @@
 [project]
 name = "agent-app-mcp"
-version = "1.0.0"
+version = "2.0.0"
 description = "Configurable MCP tool server for Agent Landing Zone"
 readme = "README.md"
 requires-python = ">=3.12"

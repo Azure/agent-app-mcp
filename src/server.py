@@ -18,7 +18,7 @@ def create_server(settings: Settings, verifier=None) -> MCPServer:
     """Shared auth and health are mandatory regardless of selected toolsets."""
     server = MCPServer(
         "agent-app-mcp",
-        version="1.0.0",
+        version="2.0.0",
         token_verifier=verifier or EntraVerifier(settings),
         auth=AuthSettings(
             issuer_url=settings.issuer,

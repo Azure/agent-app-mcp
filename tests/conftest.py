@@ -9,7 +9,8 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 
 from server import create_app, create_server
 from shared.auth import EntraVerifier
-from shared.config import ConfigurationValue, Settings as SharedSettings
+from shared.config import ConfigurationValue
+from shared.config import Settings as SharedSettings
 from tools.nl2sql.config import Settings
 from tools.nl2sql.contracts import Source
 from tools.nl2sql.runtime import register_tools

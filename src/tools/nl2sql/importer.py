@@ -133,7 +133,7 @@ def main():
         logger.error(
             "Import failed (%s); activation not confirmed. Read source to confirm active version.",
             type(exc).__name__,
-            exc_info=(SystemExit, error, None),
+            exc_info=error,
         )
         raise error from None
     print(f"Activated metadata_version: {version}")

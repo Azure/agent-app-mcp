@@ -27,7 +27,7 @@ class Service:
             logger.warning(
                 "Source catalog failure (%s)",
                 type(exc).__name__,
-                exc_info=(NL2SQLError, error, None),
+                exc_info=error,
             )
             raise error from None
 
@@ -54,6 +54,6 @@ class Service:
             logger.warning(
                 "NL2SQL provider failure (%s)",
                 type(exc).__name__,
-                exc_info=(NL2SQLError, error, None),
+                exc_info=error,
             )
             raise error from None

@@ -2,9 +2,9 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 from azure.cosmos.exceptions import CosmosResourceNotFoundError
+from conftest import Container, as_configuration
 from pydantic import ValidationError
 
-from conftest import Container, as_configuration
 from shared.config import ConfigurationValue
 from tools.nl2sql.catalog import Catalog, float32_vector
 from tools.nl2sql.contracts import NL2SQLError
@@ -101,7 +101,8 @@ async def test_admin_importer_uses_specific_settings_and_closes_clients(
     fail, settings, import_json, tmp_path, monkeypatch
 ):
     import json
-    import tools.nl2sql.importer as importer
+
+    from tools.nl2sql import importer
 
     path = tmp_path / "approved.json"
     path.write_text(json.dumps(import_json), encoding="utf-8")

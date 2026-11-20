@@ -12,6 +12,7 @@ from unittest.mock import AsyncMock, Mock
 
 import httpx2
 import pytest
+from conftest import as_configuration
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 from mcp.shared.exceptions import MCPError
@@ -21,7 +22,6 @@ from starlette.testclient import TestClient
 
 import server
 import toolsets
-from conftest import as_configuration
 from shared.config import ConfigurationValue, load_settings
 from tools.nl2sql import runtime
 from tools.nl2sql.contracts import NL2SQLError, QueryResult, SourcesResult
@@ -33,13 +33,11 @@ async def sdk_session(app, token):
         transport=httpx2.ASGITransport(app=app),
         base_url="http://localhost:8080",
         headers={"Authorization": f"Bearer {token}"},
-    ) as http:
-        async with streamable_http_client(
-            "http://localhost:8080/mcp", http_client=http
-        ) as streams:
-            async with ClientSession(*streams) as session:
-                await session.initialize()
-                yield session
+    ) as http, streamable_http_client(
+        "http://localhost:8080/mcp", http_client=http
+    ) as streams, ClientSession(*streams) as session:
+        await session.initialize()
+        yield session
 
 
 @pytest.fixture
@@ -122,29 +120,28 @@ async def test_empty_runtime_real_sdk_and_no_sql_clients(
 
 async def test_selected_runtime_real_sdk_contract_and_shutdown(boundaries, signing):
     app = server.Runtime(lifespan=server.lifespan)
-    async with app.router.lifespan_context(app):
-        async with sdk_session(app, signing.token()) as session:
-            tools = (await session.list_tools()).tools
-            assert {tool.name for tool in tools} == {"nl2sql.list_sources", "nl2sql.query"}
-            query = next(tool for tool in tools if tool.name == "nl2sql.query")
-            assert query.input_schema["required"] == ["source_id", "question"]
-            assert query.input_schema["properties"]["source_id"]["maxLength"] == 128
-            assert query.input_schema["properties"]["question"]["maxLength"] == 4000
-            assert query.output_schema == QueryResult.model_json_schema()
-            assert query.annotations.read_only_hint is True
-            assert query.annotations.destructive_hint is False
-            assert query.annotations.open_world_hint is False
-            sources = await session.call_tool("nl2sql.list_sources", {})
-            assert sources.structured_content == {"schema_version": 1, "sources": []}
-            result = await session.call_tool(
-                "nl2sql.query", {"source_id": "synthetic", "question": "count?"}
-            )
-            assert result.structured_content == boundaries.service.query.return_value.model_dump()
-            boundaries.service.query.assert_awaited_once_with("synthetic", "count?")
-            boundaries.service.query.side_effect = NL2SQLError("SOURCE_CHANGED: disabled")
-            assert (await session.call_tool(
-                "nl2sql.query", {"source_id": "synthetic", "question": "count?"}
-            )).is_error
+    async with app.router.lifespan_context(app), sdk_session(app, signing.token()) as session:
+        tools = (await session.list_tools()).tools
+        assert {tool.name for tool in tools} == {"nl2sql.list_sources", "nl2sql.query"}
+        query = next(tool for tool in tools if tool.name == "nl2sql.query")
+        assert query.input_schema["required"] == ["source_id", "question"]
+        assert query.input_schema["properties"]["source_id"]["maxLength"] == 128
+        assert query.input_schema["properties"]["question"]["maxLength"] == 4000
+        assert query.output_schema == QueryResult.model_json_schema()
+        assert query.annotations.read_only_hint is True
+        assert query.annotations.destructive_hint is False
+        assert query.annotations.open_world_hint is False
+        sources = await session.call_tool("nl2sql.list_sources", {})
+        assert sources.structured_content == {"schema_version": 1, "sources": []}
+        result = await session.call_tool(
+            "nl2sql.query", {"source_id": "synthetic", "question": "count?"}
+        )
+        assert result.structured_content == boundaries.service.query.return_value.model_dump()
+        boundaries.service.query.assert_awaited_once_with("synthetic", "count?")
+        boundaries.service.query.side_effect = NL2SQLError("SOURCE_CHANGED: disabled")
+        assert (await session.call_tool(
+            "nl2sql.query", {"source_id": "synthetic", "question": "count?"}
+        )).is_error
     boundaries.factories["SecretClient"].assert_not_called()
     boundaries.models.close.assert_awaited_once()
     boundaries.sql.close.assert_awaited_once()
@@ -225,9 +222,8 @@ def test_selected_invalid_settings_fail_before_toolset_clients(
             configuration.pop(key)
         else:
             configuration[key] = value
-    with pytest.raises(error):
-        with TestClient(server.Runtime(lifespan=server.lifespan)):
-            pytest.fail("Invalid configuration must not start")
+    with pytest.raises(error), TestClient(server.Runtime(lifespan=server.lifespan)):
+        pytest.fail("Invalid configuration must not start")
     for factory in boundaries.factories.values():
         factory.assert_not_called()
     boundaries.credential.__aexit__.assert_awaited_once()
@@ -239,9 +235,8 @@ def test_empty_server_still_requires_shared_auth(field, shared_settings, boundar
     configuration = as_configuration(shared_settings.model_dump(mode="json"))
     configuration.pop(field)
     boundaries.bootstrap.return_value = configuration
-    with pytest.raises(ValidationError):
-        with TestClient(server.Runtime(lifespan=server.lifespan)):
-            pytest.fail("Missing authentication must not start")
+    with pytest.raises(ValidationError), TestClient(server.Runtime(lifespan=server.lifespan)):
+        pytest.fail("Missing authentication must not start")
     for factory in boundaries.factories.values():
         factory.assert_not_called()
     boundaries.credential.__aexit__.assert_awaited_once()
@@ -315,12 +310,11 @@ async def test_second_reviewed_toolset_needs_no_server_changes(
     monkeypatch.setattr(toolsets, "REGISTRY", toolsets.REGISTRY | {"fake": loader})
     configuration["MCP_TOOLSETS"] = ConfigurationValue('["nl2sql", "fake"]')
     app = server.Runtime(lifespan=server.lifespan)
-    async with app.router.lifespan_context(app):
-        async with sdk_session(app, signing.token()) as session:
-            assert {tool.name for tool in (await session.list_tools()).tools} == {
-                "nl2sql.list_sources", "nl2sql.query", "fake.ping"
-            }
-            assert not (await session.call_tool("fake.ping", {})).is_error
+    async with app.router.lifespan_context(app), sdk_session(app, signing.token()) as session:
+        assert {tool.name for tool in (await session.list_tools()).tools} == {
+            "nl2sql.list_sources", "nl2sql.query", "fake.ping"
+        }
+        assert not (await session.call_tool("fake.ping", {})).is_error
     assert events == ["start", "stop"]
     factory.assert_called_once_with(configuration)
     loader.assert_called_once_with()
@@ -335,9 +329,11 @@ def test_later_toolset_validation_failure_constructs_no_earlier_clients(
         toolsets, "REGISTRY", toolsets.REGISTRY | {"fake": Mock(return_value=factory)}
     )
     configuration["MCP_TOOLSETS"] = ConfigurationValue('["nl2sql", "fake"]')
-    with pytest.raises(ValueError, match="fake invalid configuration"):
-        with TestClient(server.Runtime(lifespan=server.lifespan)):
-            pytest.fail("All settings must validate before toolset dependency construction")
+    with (
+        pytest.raises(ValueError, match="fake invalid configuration"),
+        TestClient(server.Runtime(lifespan=server.lifespan)),
+    ):
+        pytest.fail("All settings must validate before toolset dependency construction")
     for provider in boundaries.factories.values():
         provider.assert_not_called()
     boundaries.credential.__aexit__.assert_awaited_once()
@@ -357,9 +353,11 @@ def test_later_toolset_startup_failure_unwinds_earlier_toolset(
         toolsets.REGISTRY | {"fake": lambda: lambda config: FailingToolset()},
     )
     configuration["MCP_TOOLSETS"] = ConfigurationValue('["nl2sql", "fake"]')
-    with pytest.raises(RuntimeError, match="later toolset startup failure"):
-        with TestClient(server.Runtime(lifespan=server.lifespan)):
-            pytest.fail("Failed toolset must abort server startup")
+    with (
+        pytest.raises(RuntimeError, match="later toolset startup failure"),
+        TestClient(server.Runtime(lifespan=server.lifespan)),
+    ):
+        pytest.fail("Failed toolset must abort server startup")
     boundaries.sql.close.assert_awaited_once()
     boundaries.models.close.assert_awaited_once()
     boundaries.sync_credential.close.assert_called_once()

@@ -2,12 +2,13 @@ import asyncio
 from unittest.mock import AsyncMock
 
 import pytest
+from conftest import as_configuration
 from pydantic import ValidationError
 
-from conftest import as_configuration
 from shared.config import Settings as SharedSettings
 from shared.config import load_configuration, load_settings
-from tools.nl2sql.config import Settings, load_settings as load_sql_settings
+from tools.nl2sql.config import Settings
+from tools.nl2sql.config import load_settings as load_sql_settings
 from tools.nl2sql.contracts import NL2SQLError
 from tools.nl2sql.service import Service
 
@@ -94,6 +95,7 @@ async def test_app_configuration_label_and_json_arrays(
     settings, shared_settings, configuration, monkeypatch
 ):
     from types import SimpleNamespace
+
     import shared.config as module
 
     class Client:

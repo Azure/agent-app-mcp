@@ -5,7 +5,6 @@ import os
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import TypeVar
 from uuid import UUID
 
 from azure.appconfiguration.aio import AzureAppConfigurationClient
@@ -57,10 +56,9 @@ class ConfigurationValue:
 
 
 Configuration = Mapping[str, ConfigurationValue]
-SettingsT = TypeVar("SettingsT", bound=BaseModel)
 
 
-def parse_settings(
+def parse_settings[SettingsT: BaseModel](
     model: type[SettingsT], configuration: Configuration, *, json_fields: tuple[str, ...] = ()
 ) -> SettingsT:
     """Validate only the caller's fields; never accept Key Vault references as values."""

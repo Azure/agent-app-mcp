@@ -15,6 +15,27 @@
   dependency graph, Python lint, and the maintained contract tests.
 
 
+### Changed
+- Upgrade development lint to Ruff 0.17.5, preserving sanitized provider
+  errors, importer exit status, cancellation, and read-only SQL rejection.
+
+
+
+## [v2.0.1] - 2026-11-20
+
+### Fixed
+- Update `aiohttp` to 3.14.4 and the MCP SDK's transitive
+  `opentelemetry-api` dependency to 1.45.2.
+
+### Changed
+- Upgrade `azure-identity` to 1.27.0 and `sqlglot` to 30.27.0 while
+  preserving the existing MCP, authentication, and read-only SQL contracts.
+- Upgrade development tests to `pytest` 9.2.0 and `pytest-asyncio` 1.5.0.
+- Upgrade SHA-pinned `actions/checkout` to 7.0.1.
+- Add pull-request validation of the locked runtime and development
+  dependency graph, Python lint, and the maintained contract tests.
+
+
 ## [v2.0.0] - 2026-11-02
 
 ### Changed

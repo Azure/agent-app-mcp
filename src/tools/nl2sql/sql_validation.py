@@ -70,18 +70,18 @@ def validate_sql(sql: str, approved_objects: set[str]) -> str:
         )
         for node in tree.walk():
             if isinstance(node, denied):
-                raise ValueError("Unsafe SQL node")
+                raise TypeError("Unsafe SQL node")
             if isinstance(node, exp.Dot) and isinstance(node.expression, exp.Func):
-                raise ValueError("User-defined function")
+                raise TypeError("User-defined function")
         scopes = list(traverse_scope(tree))
         if not scopes:
             raise ValueError("Unresolved SQL scopes")
         for scope in scopes:
-            for _, (_, reference) in scope.selected_sources.items():
+            for _, reference in scope.selected_sources.values():
                 if isinstance(reference, Scope):
                     continue  # CTE/subquery resolves through its own validated scope.
                 if not isinstance(reference, exp.Table):
-                    raise ValueError("Unsafe source")
+                    raise TypeError("Unsafe source")
                 if (
                     not isinstance(reference.this, exp.Identifier)
                     or not reference.db
@@ -102,6 +102,7 @@ def validate_sql(sql: str, approved_objects: set[str]) -> str:
     except (
         sqlglot.errors.SqlglotError,
         ValueError,
+        TypeError,
         KeyError,
         sqlparse.exceptions.SQLParseError,
     ) as exc:

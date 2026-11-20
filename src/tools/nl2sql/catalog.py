@@ -90,7 +90,7 @@ class Catalog:
                 needed.add(record.object_name)
         expanded = set()
         while needed - expanded:
-            obj = sorted(needed - expanded)[0]
+            obj = min(needed - expanded)
             if obj not in approved:
                 raise NL2SQLError("METADATA_UNAPPROVED: related object is not approved")
             schema_docs = self.metadata.query_items(

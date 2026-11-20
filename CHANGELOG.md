@@ -1,5 +1,18 @@
 # Changelog
 
+## [v2.0.2] - 2026-11-20
+
+### Fixed
+- Upgrade SQLParse to 0.6.0 with parser resource-consumption fixes while
+  preserving read-only validation and sanitized SQL rejection behavior.
+
+
+### Changed
+- Upgrade development lint to Ruff 0.17.5, preserving sanitized provider
+  errors, importer exit status, cancellation, and read-only SQL rejection.
+
+
+
 ## [v2.0.1] - 2026-11-20
 
 ### Fixed

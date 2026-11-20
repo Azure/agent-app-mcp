@@ -2,12 +2,13 @@ import asyncio
 from unittest.mock import AsyncMock
 
 import pytest
+from conftest import as_configuration
 from pydantic import ValidationError
 
-from conftest import as_configuration
 from shared.config import Settings as SharedSettings
 from shared.config import load_configuration, load_settings
-from tools.nl2sql.config import Settings, load_settings as load_sql_settings
+from tools.nl2sql.config import Settings
+from tools.nl2sql.config import load_settings as load_sql_settings
 from tools.nl2sql.contracts import NL2SQLError
 from tools.nl2sql.service import Service
 
@@ -94,6 +95,7 @@ async def test_app_configuration_label_and_json_arrays(
     settings, shared_settings, configuration, monkeypatch
 ):
     from types import SimpleNamespace
+
     import shared.config as module
 
     class Client:
@@ -125,3 +127,45 @@ async def test_app_configuration_label_and_json_arrays(
 def test_importer_settings_do_not_require_server_auth_or_selection(settings):
     configuration = as_configuration(settings.model_dump(mode="json"))
     assert load_sql_settings(configuration) == settings
+
+
+@pytest.mark.parametrize("operation", ["list_sources", "query"])
+@pytest.mark.parametrize("exception", [Exception, RuntimeError, ValueError])
+async def test_provider_errors_log_only_sanitized_exception(
+    operation, exception, settings, source, caplog
+):
+    instance = service(settings, source)
+    private_message = "synthetic-secret credentials/raw SQL"
+    if operation == "list_sources":
+        instance.catalog.list_sources.side_effect = exception(private_message)
+        call = instance.list_sources()
+        code = "CATALOG_FAILED"
+    else:
+        instance.models.embed.side_effect = exception(private_message)
+        call = instance.query("synthetic", "question")
+        code = "PROVIDER_FAILED"
+    with pytest.raises(NL2SQLError, match=code) as caught:
+        await call
+    assert private_message not in str(caught.value)
+    assert private_message not in caplog.text
+    assert caught.value.__cause__ is None
+    assert caught.value.__suppress_context__
+    record = caplog.records[-1]
+    assert record.levelname == "WARNING"
+    assert record.exc_info == (NL2SQLError, caught.value, None)
+    instance.sql.execute.assert_not_awaited()
+
+
+@pytest.mark.parametrize("operation", ["list_sources", "query"])
+async def test_provider_cancellation_is_not_translated(operation, settings, source, caplog):
+    instance = service(settings, source)
+    if operation == "list_sources":
+        instance.catalog.list_sources.side_effect = asyncio.CancelledError()
+        call = instance.list_sources()
+    else:
+        instance.models.embed.side_effect = asyncio.CancelledError()
+        call = instance.query("synthetic", "question")
+    with pytest.raises(asyncio.CancelledError):
+        await call
+    assert not caplog.records
+    instance.sql.execute.assert_not_awaited()

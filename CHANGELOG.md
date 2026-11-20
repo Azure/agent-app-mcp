@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Changed
+- Upgrade development lint to Ruff 0.17.5, preserving sanitized provider
+  errors, importer exit status, cancellation, and read-only SQL rejection.
+
+
 
 ## [v2.0.1] - 2026-11-20
 

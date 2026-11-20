@@ -1,9 +1,10 @@
-import jwt
-import pytest
-from starlette.testclient import TestClient
 from unittest.mock import AsyncMock
 
+import jwt
+import pytest
 from conftest import nl2sql_app
+from starlette.testclient import TestClient
+
 from tools.nl2sql.contracts import QueryResult, SourcesResult
 
 
@@ -160,22 +161,19 @@ async def test_official_sdk_client_and_server_locally(shared_settings, signing):
     service = AsyncMock()
     service.list_sources.return_value = SourcesResult(sources=[])
     app = nl2sql_app(service, shared_settings, signing.verifier)
-    async with app.router.lifespan_context(app):
-        async with httpx2.AsyncClient(
-            transport=httpx2.ASGITransport(app=app),
-            base_url="http://localhost:8080",
-            headers={"Authorization": f"Bearer {signing.token()}"},
-        ) as http:
-            async with streamable_http_client(
-                "http://localhost:8080/mcp", http_client=http
-            ) as streams:
-                async with ClientSession(*streams) as session:
-                    initialized = await session.initialize()
-                    assert initialized.server_info.name == "agent-app-mcp"
-                    tools = await session.list_tools()
-                    assert len(tools.tools) == 2
-                    result = await session.call_tool("nl2sql.list_sources", {})
-                    assert result.structured_content == {"schema_version": 1, "sources": []}
+    async with app.router.lifespan_context(app), httpx2.AsyncClient(
+        transport=httpx2.ASGITransport(app=app),
+        base_url="http://localhost:8080",
+        headers={"Authorization": f"Bearer {signing.token()}"},
+    ) as http, streamable_http_client(
+        "http://localhost:8080/mcp", http_client=http
+    ) as streams, ClientSession(*streams) as session:
+        initialized = await session.initialize()
+        assert initialized.server_info.name == "agent-app-mcp"
+        tools = await session.list_tools()
+        assert len(tools.tools) == 2
+        result = await session.call_tool("nl2sql.list_sources", {})
+        assert result.structured_content == {"schema_version": 1, "sources": []}
 
 
 def test_oauth_metadata_uses_parent_endpoint(shared_settings, signing):
@@ -193,3 +191,68 @@ def test_oauth_metadata_uses_parent_endpoint(shared_settings, signing):
             ).status_code
             == 401
         )
+
+
+@pytest.mark.parametrize("tool", ["nl2sql.list_sources", "nl2sql.query"])
+def test_http_provider_errors_preserve_public_sanitization(
+    tool, settings, source, shared_settings, signing, caplog
+):
+    from tools.nl2sql.service import Service
+
+    private_message = "synthetic-secret credentials/raw SQL"
+    service = Service(AsyncMock(), AsyncMock(), AsyncMock(), settings)
+    service.catalog.source.return_value = source
+    if tool == "nl2sql.list_sources":
+        service.catalog.list_sources.side_effect = RuntimeError(private_message)
+        arguments = {}
+        public_message = "CATALOG_FAILED: approved source catalog is unavailable"
+        warning = "Source catalog failure (RuntimeError)"
+    else:
+        service.models.embed.side_effect = RuntimeError(private_message)
+        arguments = {"source_id": "synthetic", "question": "count?"}
+        public_message = "PROVIDER_FAILED: metadata, model or SQL operation failed"
+        warning = "NL2SQL provider failure (RuntimeError)"
+    headers = {
+        "Authorization": f"Bearer {signing.token()}",
+        "Accept": "application/json, text/event-stream",
+    }
+    with TestClient(nl2sql_app(service, shared_settings, signing.verifier)) as client:
+        initialized = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2025-11-25",
+                    "capabilities": {},
+                    "clientInfo": {"name": "synthetic-test", "version": "1"},
+                },
+            },
+        )
+        assert initialized.status_code == 200
+        response = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 2,
+                "method": "tools/call",
+                "params": {"name": tool, "arguments": arguments},
+            },
+        )
+    assert response.status_code == 200
+    assert response.json()["result"]["isError"] is True
+    assert public_message in response.text
+    assert private_message not in response.text
+    assert private_message not in caplog.text
+    record = next(r for r in caplog.records if r.name == "tools.nl2sql.service")
+    assert record.levelname == "WARNING"
+    assert record.getMessage() == warning
+    assert record.exc_info[0].__name__ == "NL2SQLError"
+    assert record.exc_info[1].__cause__ is None
+    assert record.exc_info[1].__suppress_context__
+    assert record.exc_info[2] is None
+    assert "Traceback" not in record.exc_text
+    service.sql.execute.assert_not_awaited()

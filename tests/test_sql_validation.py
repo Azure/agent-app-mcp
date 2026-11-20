@@ -55,3 +55,15 @@ def test_read_only(sql):
 def test_reject_unsafe_sql(sql):
     with pytest.raises(NL2SQLError, match="SQL_(REJECTED|INVALID)"):
         validate_sql(sql, {"dbo.Products", "dbo.Categories"})
+
+
+def test_parser_type_failure_preserves_sql_rejection(monkeypatch):
+    from tools.nl2sql import sql_validation
+
+    def fail(*args, **kwargs):
+        raise TypeError("synthetic parser type mismatch")
+
+    monkeypatch.setattr(sql_validation.sqlglot, "parse", fail)
+    with pytest.raises(NL2SQLError, match="SQL_REJECTED") as caught:
+        validate_sql("SELECT 1", set())
+    assert isinstance(caught.value.__cause__, TypeError)

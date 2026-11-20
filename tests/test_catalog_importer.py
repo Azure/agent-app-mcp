@@ -130,3 +130,29 @@ async def test_admin_importer_uses_specific_settings_and_closes_clients(
     models.close.assert_awaited_once()
     cosmos.__aexit__.assert_awaited_once()
     credential.__aexit__.assert_awaited_once()
+
+
+@pytest.mark.parametrize("exception", [Exception, RuntimeError, ValueError])
+def test_importer_failure_preserves_exit_and_sanitizes_log(
+    exception, tmp_path, monkeypatch, caplog, capsys
+):
+    from tools.nl2sql import importer
+
+    path = tmp_path / "approved.json"
+    private_message = "synthetic-secret credentials/raw SQL"
+    operation = AsyncMock(side_effect=exception(private_message))
+    monkeypatch.setattr(importer, "run", operation)
+    monkeypatch.setattr("sys.argv", ["importer", "--file", str(path)])
+    with pytest.raises(SystemExit) as caught:
+        importer.main()
+    assert caught.value.code == 1
+    assert caught.value.__cause__ is None
+    assert caught.value.__suppress_context__
+    assert private_message not in caplog.text
+    output = capsys.readouterr()
+    assert not output.out
+    assert private_message not in output.err
+    record = caplog.records[-1]
+    assert record.levelname == "ERROR"
+    assert record.exc_info == (SystemExit, caught.value, None)
+    operation.assert_awaited_once_with(path)

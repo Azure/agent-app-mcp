@@ -21,6 +21,8 @@ from .config import load_settings
 from .contracts import Metadata, Source, StrictModel
 from .models import Models
 
+logger = logging.getLogger(__name__)
+
 
 class ImportFile(StrictModel):
     source: Source
@@ -127,11 +129,13 @@ def main():
     try:
         version = asyncio.run(run(args.file))
     except Exception as exc:
-        logging.error(
+        error = SystemExit(1)
+        logger.error(
             "Import failed (%s); activation not confirmed. Read source to confirm active version.",
             type(exc).__name__,
+            exc_info=(SystemExit, error, None),
         )
-        raise SystemExit(1) from None
+        raise error from None
     print(f"Activated metadata_version: {version}")
 
 

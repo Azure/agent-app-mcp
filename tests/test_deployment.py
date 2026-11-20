@@ -26,7 +26,7 @@ def assert_binding(calls, scenario):
     app_calls = [c for c in calls if "az containerapp" in c]
     assert all("--resource-group application-rg" in c for c in app_calls)
     registry_calls = [
-        c for c in calls if c.startswith("az acr login") or c.startswith("az acr build")
+        c for c in calls if c.startswith(("az acr login", "az acr build"))
     ]
     assert all("--resource-group registry-rg" in c for c in registry_calls)
     assert all("--subscription 00000000-0000-0000-0000-000000000001" in c for c in registry_calls)

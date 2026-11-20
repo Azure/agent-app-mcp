@@ -23,8 +23,13 @@ class Service:
         except TimeoutError:
             raise NL2SQLError("QUERY_TIMEOUT: overall deadline exceeded") from None
         except Exception as exc:
-            logger.warning("Source catalog failure (%s)", type(exc).__name__)
-            raise NL2SQLError("CATALOG_FAILED: approved source catalog is unavailable") from None
+            error = NL2SQLError("CATALOG_FAILED: approved source catalog is unavailable")
+            logger.warning(
+                "Source catalog failure (%s)",
+                type(exc).__name__,
+                exc_info=(NL2SQLError, error, None),
+            )
+            raise error from None
 
     async def query(self, source_id, question):
         try:
@@ -45,5 +50,10 @@ class Service:
             raise NL2SQLError("QUERY_TIMEOUT: overall deadline exceeded") from None
         except Exception as exc:
             # SDK tool errors are safe; never forward/log model/SQL/provider exception text.
-            logger.warning("NL2SQL provider failure (%s)", type(exc).__name__)
-            raise NL2SQLError("PROVIDER_FAILED: metadata, model or SQL operation failed") from None
+            error = NL2SQLError("PROVIDER_FAILED: metadata, model or SQL operation failed")
+            logger.warning(
+                "NL2SQL provider failure (%s)",
+                type(exc).__name__,
+                exc_info=(NL2SQLError, error, None),
+            )
+            raise error from None

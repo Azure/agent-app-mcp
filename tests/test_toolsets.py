@@ -410,6 +410,7 @@ def test_fresh_process_empty_startup_never_imports_sql_runtime(shared_settings, 
     """)
     result = subprocess.run(
         [sys.executable, "-c", code, shared_settings.model_dump_json(), selection],
+        check=False,
         env=os.environ | {"PYTHONPATH": str(Path(__file__).parents[1] / "src")},
         capture_output=True, text=True, timeout=30,
     )

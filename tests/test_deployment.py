@@ -217,6 +217,7 @@ def test_bash_native_failures_and_digest(failure, scenario):
     }
     result = subprocess.run(
         [BASH, "-c", BASH_MOCKS],
+        check=False,
         cwd=ROOT,
         env=env,
         capture_output=True,

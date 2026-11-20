@@ -29,6 +29,17 @@ verification. The image stays local to the runner: the check does not publish
 or upload images, deploy to Azure, or make live model or SQL calls. New commits
 automatically replace obsolete runs; no manual dispatch is needed.
 
+## Python Dependency and Contract Verification
+
+The **Verify Python dependencies and contracts** pull-request check uses
+Python 3.12 and the same pinned `uv` version as the container. It checks that
+`uv.lock` matches the project, restores both runtime and development packages
+from the frozen lock, runs `ruff check src tests`, and runs the maintained
+`tests/` suite. This exercises SQL validation, authentication, configuration,
+toolset lifecycle, and mocked deployment contracts. It does not deploy to
+Azure or make live model or SQL calls.
+
+
 ## Code Update Workflow
 
 We use a simplified version of the [Fork and Branch Workflow](https://blog.scottlowe.org/2015/01/27/using-fork-branch-git-workflow/) alongside [Git Flow](https://nvie.com/posts/a-successful-git-branching-model/). The `release` branches always contains deployment-ready code, while the `main` branch serves as our integration branch.

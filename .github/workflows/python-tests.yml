@@ -1,0 +1,36 @@
+name: Verify Python dependencies and contracts
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  python-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned resolver
+        run: |
+          python3.12 -m venv .ci-tools
+          .ci-tools/bin/python -m pip install --disable-pip-version-check uv==0.10.12
+      - name: Verify lock and restore runtime and development dependencies
+        id: restore
+        run: |
+          .ci-tools/bin/uv lock --check --python python3.12
+          .ci-tools/bin/uv sync --frozen --no-install-project --python python3.12
+      - name: Check Python lint
+        run: .venv/bin/ruff check src tests
+      - name: Run maintained contract tests
+        if: ${{ !cancelled() && steps.restore.outcome == 'success' }}
+        run: .venv/bin/python -m pytest -q tests

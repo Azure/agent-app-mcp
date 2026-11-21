@@ -1,6 +1,12 @@
 # Changelog
 
-## [Unreleased]
+## [v2.0.3] - 2026-11-21
+
+### Fixed
+- Upgrade the MCP SDK's transitive python-multipart dependency to 0.0.31,
+  including multipart boundary/header bounds and negative Content-Length
+  rejection. Preserve existing bounded JSON MCP HTTP and authentication
+  contracts.
 
 ## [v2.0.2] - 2026-11-20
 

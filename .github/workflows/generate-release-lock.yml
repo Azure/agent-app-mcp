@@ -1,0 +1,30 @@
+name: Generate reviewed release lock
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  generate-lock:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Generate lock with the container resolver
+        run: |
+          python3.12 -m venv .ci-tools
+          .ci-tools/bin/python -m pip install --disable-pip-version-check uv==0.10.12
+          .ci-tools/bin/uv lock --python python3.12
+      - name: Preserve generated lock for review
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: generated-release-lock
+          path: uv.lock
+          if-no-files-found: error
+          retention-days: 1

@@ -1,5 +1,5 @@
 ---
-applyTo: "AGENTS.md,.github/copilot-instructions.md,.github/agents/**/*.md,.github/skills/**/*.md,.github/instructions/**/*.md,.github/scripts/validate-agentic-assets.py,.github/workflows/validate-agentic-assets.yml"
+applyTo: "AGENTS.md,.github/copilot-instructions.md,.github/agents/**/*.md,.github/skills/**/*.md,.github/instructions/**/*.md,.github/scripts/validate-agentic-assets.py,.github/workflows/quality-gate.yml"
 ---
 
 # Copilot engineering assets

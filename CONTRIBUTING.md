@@ -1,5 +1,7 @@
 # Contributing
 
+<!-- Temporary governance validation; not intended for merge. -->
+
 Create a focused feature branch from `develop` and open your pull request
 against `develop`. Only `release/X.Y.Z` branches in this repository may open
 pull requests against `main`.

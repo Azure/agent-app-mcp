@@ -43,15 +43,8 @@ jobs:
       - name: Verify lock and restore runtime and development dependencies
         id: restore
         run: |
-          .ci-tools/bin/uv lock --python python3.12 --upgrade-package cryptography --upgrade-package starlette
           .ci-tools/bin/uv lock --check --python python3.12
           .ci-tools/bin/uv sync --frozen --no-install-project --python python3.12
-      - name: Capture regenerated public dependency lock
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: public-dependency-lock
-          path: uv.lock
-          retention-days: 1
       - name: Check Python lint
         run: .venv/bin/ruff check src tests
       - name: Run maintained contract tests

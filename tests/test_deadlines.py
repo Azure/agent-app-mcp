@@ -5,12 +5,10 @@ from unittest.mock import Mock
 import pytest
 
 from tools.nl2sql.contracts import NL2SQLError
-from tools.nl2sql.sql import SQLExecutor
+from tools.nl2sql import sql as module
 
 
 async def test_connect_returning_after_deadline_never_executes_sql(source, monkeypatch):
-    import tools.nl2sql.sql as module
-
     monkeypatch.setattr(module, "SQL_TIMEOUT", 0.01)
     connection = Mock()
     credential = Mock()
@@ -20,7 +18,7 @@ async def test_connect_returning_after_deadline_never_executes_sql(source, monke
         time.sleep(0.03)
         return connection
 
-    executor = SQLExecutor(credential, connect=connect)
+    executor = module.SQLExecutor(credential, connect=connect)
     try:
         with pytest.raises(NL2SQLError, match="SQL_TIMEOUT"):
             await executor.execute(source, "SELECT 1", "id")

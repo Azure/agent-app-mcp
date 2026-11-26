@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 
 from tools.nl2sql.contracts import NL2SQLError
-from tools.nl2sql.sql import SQLExecutor, odbc_value, serialize
+from tools.nl2sql import sql as module
 
 
 class Cursor:
@@ -52,7 +52,7 @@ class Connection:
 
 
 def test_exact_serialization(source):
-    result = serialize(
+    result = module.serialize(
         Cursor(
             [decimal.Decimal, dt.date, dt.datetime, dt.time, bytes, str, int, float, bool],
             [
@@ -108,11 +108,11 @@ def test_exact_serialization(source):
 )
 def test_result_limits(types, rows, code, source):
     with pytest.raises(NL2SQLError, match=code):
-        serialize(Cursor(types, rows), source, "id")
+        module.serialize(Cursor(types, rows), source, "id")
 
 
 def test_exact_row_boundary(source):
-    assert serialize(Cursor([int], [[1]] * 1000), source, "id").row_count == 1000
+    assert module.serialize(Cursor([int], [[1]] * 1000), source, "id").row_count == 1000
 
 
 async def test_one_worker_owns_all_handles_and_tls(source):
@@ -130,7 +130,7 @@ async def test_one_worker_owns_all_handles_and_tls(source):
         assert kwargs["autocommit"] is True
         return connection
 
-    executor = SQLExecutor(credential, connect=connect)
+    executor = module.SQLExecutor(credential, connect=connect)
     try:
         result = await executor.execute(source, "SELECT 1", "id")
         assert result.row_count == 1
@@ -142,15 +142,13 @@ async def test_one_worker_owns_all_handles_and_tls(source):
 
 
 async def test_timeout_does_not_close_in_use_handles(source, monkeypatch):
-    import tools.nl2sql.sql as module
-
     monkeypatch.setattr(module, "SQL_TIMEOUT", 0.05)
     cursor = Cursor([int], [[1]])
     cursor.block = True
     connection = Connection(cursor)
     credential = Mock()
     credential.get_token.return_value = SimpleNamespace(token="token")
-    executor = SQLExecutor(credential, connect=lambda *a, **kw: connection)
+    executor = module.SQLExecutor(credential, connect=lambda *a, **kw: connection)
     try:
         with pytest.raises(NL2SQLError, match="SQL_TIMEOUT"):
             await executor.execute(source, "SELECT 1", "id")
@@ -173,7 +171,7 @@ async def test_execution_failure_cleans_both_handles(source):
     connection = Connection(cursor)
     credential = Mock()
     credential.get_token.return_value = SimpleNamespace(token="token")
-    executor = SQLExecutor(credential, connect=lambda *a, **kw: connection)
+    executor = module.SQLExecutor(credential, connect=lambda *a, **kw: connection)
     try:
         with pytest.raises(RuntimeError):
             await executor.execute(source, "SELECT 1", "id")
@@ -189,7 +187,7 @@ async def test_password_secret_allowlist_and_escaping(source):
     vault = AsyncMock()
     vault.get_secret.return_value = SimpleNamespace(value="a};UID=other;{")
     connect = Mock(return_value=Connection(Cursor([int], [[1]])))
-    executor = SQLExecutor(Mock(), vault, connect)
+    executor = module.SQLExecutor(Mock(), vault, connect)
     try:
         with pytest.raises(NL2SQLError, match="not approved"):
             await executor.execute(source, "SELECT 1", "id")
@@ -200,4 +198,4 @@ async def test_password_secret_allowlist_and_escaping(source):
         assert "attrs_before" not in connect.call_args.kwargs
     finally:
         await executor.close()
-    assert odbc_value("x};Encrypt=no;") == "{x}};Encrypt=no;}"
+    assert module.odbc_value("x};Encrypt=no;") == "{x}};Encrypt=no;}"

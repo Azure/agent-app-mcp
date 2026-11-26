@@ -7,8 +7,8 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from tools.nl2sql.contracts import NL2SQLError
 from tools.nl2sql import sql as module
+from tools.nl2sql.contracts import NL2SQLError
 
 
 class Cursor:

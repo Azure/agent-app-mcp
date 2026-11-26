@@ -4,8 +4,8 @@ from unittest.mock import Mock
 
 import pytest
 
-from tools.nl2sql.contracts import NL2SQLError
 from tools.nl2sql import sql as module
+from tools.nl2sql.contracts import NL2SQLError
 
 
 async def test_connect_returning_after_deadline_never_executes_sql(source, monkeypatch):

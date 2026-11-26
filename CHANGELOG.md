@@ -1,6 +1,10 @@
 # Changelog
 
-## [Unreleased]
+## [v2.0.5] - 2026-11-26
+
+### Fixed
+- Upgrade `cryptography` to 50.0.2 and `starlette` to 1.10.0 in the locked
+  dependencies to address known security advisories.
 
 ## [v2.0.4] - 2026-11-23
 

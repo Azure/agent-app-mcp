@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [v2.0.4] - 2026-11-23
+
+### Changed
+- Clarify release validation timing for Agent Landing Zone umbrella releases
+  in the repository's release guidance.
+
 ## [v2.0.3] - 2026-11-21
 
 ### Fixed

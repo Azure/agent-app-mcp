@@ -1,12 +1,10 @@
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
-from tools.nl2sql.models import Models
+from tools.nl2sql import models as module
 
 
 async def test_official_async_model_adapter_selected_deployments(settings, monkeypatch):
-    import tools.nl2sql.models as module
-
     client = AsyncMock()
     client.embeddings.create.return_value = SimpleNamespace(
         data=[SimpleNamespace(embedding=[0, 0, 1])]
@@ -17,7 +15,7 @@ async def test_official_async_model_adapter_selected_deployments(settings, monke
     factory = Mock(return_value=client)
     monkeypatch.setattr(module, "AsyncOpenAI", factory)
     monkeypatch.setattr(module, "get_bearer_token_provider", Mock(return_value="mock-provider"))
-    models = Models(settings, object())
+    models = module.Models(settings, object())
     assert factory.call_args.kwargs["base_url"] == "https://example.openai.azure.com/openai/v1/"
     assert factory.call_args.kwargs["api_key"] == "mock-provider"
     assert await models.embed("approved schema") == [0, 0, 1]

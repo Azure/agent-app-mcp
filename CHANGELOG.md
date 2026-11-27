@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [v2.0.6] - 2026-11-27
+
+### Changed
+- Clarify the toolset lifespan protocol and clean up test imports without
+  changing MCP tool contracts.
+
 ## [v2.0.5] - 2026-11-26
 
 ### Fixed

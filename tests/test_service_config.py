@@ -5,8 +5,7 @@ import pytest
 from conftest import as_configuration
 from pydantic import ValidationError
 
-from shared.config import Settings as SharedSettings
-from shared.config import load_configuration, load_settings
+from shared import config as module
 from tools.nl2sql.config import Settings
 from tools.nl2sql.config import load_settings as load_sql_settings
 from tools.nl2sql.contracts import NL2SQLError
@@ -71,7 +70,7 @@ def test_sql_limits_fail_closed(settings):
 
 
 def test_shared_auth_limits_fail_closed(shared_settings):
-    assert SharedSettings.model_validate(
+    assert module.Settings.model_validate(
         shared_settings.model_dump() | {"MCP_ALLOWED_CLIENT_IDS": []}
     )
     for field, value in (
@@ -81,11 +80,11 @@ def test_shared_auth_limits_fail_closed(shared_settings):
         ("MCP_SERVER_URL", "https://example.com/mcp?access=unexpected"),
     ):
         with pytest.raises(ValidationError):
-            SharedSettings.model_validate(shared_settings.model_dump() | {field: value})
+            module.Settings.model_validate(shared_settings.model_dump() | {field: value})
 
 
 def test_parent_published_mcp_endpoint(shared_settings):
-    configured = SharedSettings.model_validate(
+    configured = module.Settings.model_validate(
         shared_settings.model_dump() | {"MCP_SERVER_URL": "https://synthetic-mcp.example.com/mcp"}
     )
     assert configured.resource_url == "https://synthetic-mcp.example.com/mcp"
@@ -95,8 +94,6 @@ async def test_app_configuration_label_and_json_arrays(
     settings, shared_settings, configuration, monkeypatch
 ):
     from types import SimpleNamespace
-
-    import shared.config as module
 
     class Client:
         def __init__(self, endpoint, credential):
@@ -119,8 +116,8 @@ async def test_app_configuration_label_and_json_arrays(
 
     monkeypatch.setattr(module, "AzureAppConfigurationClient", Client)
     monkeypatch.setenv("APP_CONFIG_ENDPOINT", "https://example.azconfig.io")
-    loaded = await load_configuration(object())
-    assert load_settings(loaded) == shared_settings.model_copy(update={"MCP_TOOLSETS": ["nl2sql"]})
+    loaded = await module.load_configuration(object())
+    assert module.load_settings(loaded) == shared_settings.model_copy(update={"MCP_TOOLSETS": ["nl2sql"]})
     assert load_sql_settings(loaded) == settings
 
 

@@ -12,7 +12,8 @@ from shared.config import Configuration, Settings
 class Toolset(Protocol):
     """Validated toolset whose dependencies live only for the server lifespan."""
 
-    def lifespan(self, server: MCPServer, credential) -> AbstractAsyncContextManager[None]: ...
+    def lifespan(self, server: MCPServer, credential) -> AbstractAsyncContextManager[None]:
+        """Manage the lifetime of the toolset's dependencies."""
 
 
 Factory = Callable[[Configuration], Toolset]
